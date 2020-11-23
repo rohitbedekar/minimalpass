@@ -1,28 +1,23 @@
 import random
+import os
+import sys
+import argparse
 
-def upper_and_lower_case_alphabets(letters):
+def get_upper_and_lower_case(letters):
     all_letters = [char.upper() for char in letters]
     all_letters.extend([char.lower() for char in letters])
     return all_letters
 
-def identify_password_combination(password_size):
-    # unpack tuple
-    letters_in_combination, numbers_in_combination, special_chars_in_combination = autogenerate_combination(password_size)
-
-    password_combination = input("Enter custom to customise your password combination OR" \
-                                 "\nPress Enter to continue with suggested combination (default): ")
-    if password_combination.lower() == "custom":
-        letters_in_combination = int(input("Enter the number of letters: "))
-        numbers_in_combination = int(input("Enter the number of numbers: "))
-        special_chars_in_combination = int(input("Enter the number of special characters: "))
+def get_user_combination(password_size):
+    letters_in_combination = int(args.letters)
+    numbers_in_combination = int(args.numbers)
+    special_chars_in_combination = int(args.specialchars)
     
     return (letters_in_combination, numbers_in_combination, special_chars_in_combination)
 
 def autogenerate_combination(password_size):
     max_num_and_spl_chars = int(0.25 * password_size)
     max_letters = password_size - int((2 * max_num_and_spl_chars))
-    print(f"\nThe default password combination includes {int(max_letters)} alphabets, " \
-           f"{(max_num_and_spl_chars)} numbers and {(max_num_and_spl_chars)} special characters")
     return (max_letters, max_num_and_spl_chars, max_num_and_spl_chars)
 
 def generate_password(char_list, total_chars):
@@ -40,56 +35,106 @@ def generate_password(char_list, total_chars):
     
     return password_characters
 
+def validate_password_size(password_size):
+    if not (8 <= password_size <= 256):
+        print("The password size provided doesn't satisfy the limits. Please try again")
+        exit()
+
+def exit():
+    sys.exit()
+
 # Main program starts here
+
+parser = argparse.ArgumentParser(
+    formatter_class=argparse.RawDescriptionHelpFormatter,
+    description="Generate a customizable alphanumeric password",
+    epilog="\n\nExamples:"\
+           "\n> python password_generator.py" \
+           "\ng.KlZ0-zr21_"
+           "\n\n> python password_generator.py --size 16" \
+           "\nDX5im&3hr*7s%q;4"
+           "\n\n> python password_generator.py --letters 13 --numbers 1 --specialchars 1" \
+           "\nFLtyKqR:sbU8BTH")
+
+parser.add_argument("--size",
+                    metavar="size",
+                    type=int,
+                    help="set password size between 8 to 256 characters, default size is 12 characters")
+
+parser.add_argument("--letters",
+                    metavar="letters",
+                    type=int,
+                    help="override size and set number of letters to be included in your custom password")
+
+parser.add_argument("--numbers",
+                    metavar="numbers",
+                    type=int,
+                    help="override size and set number of digits to be included in your custom password")
+
+parser.add_argument("--specialchars",
+                    metavar="specialchars",
+                    type=int,
+                    help="override size and set number of special characters to be included in your custom password")
+
+args = parser.parse_args()
+
 # all upper and lower case alphabets as a list
-alphabets = upper_and_lower_case_alphabets("abcdefghijklmnopqrstuvwxyz")
+alphabet = get_upper_and_lower_case("abcdefghijklmnopqrstuvwxyz")
 
 # all digits and special characters as a list
 numbers = [num for num in '0123456789']
 special_chars = [char for char in '!?@#$%&\()[]{<>}/*+-=:;,.`~_|']
 
 # randomise the lists to prevent patterns in passwords generated
-for list in [alphabets, numbers, special_chars]:
+for list in [alphabet, numbers, special_chars]:
     random.shuffle(list)
 
 # save password as a list for easy shuffling using random module
 password_characters = []
 
-# default password size
+express_settings = False
+user_combination = False
+password_size = 0
+letters_in_combination = numbers_in_combination = special_chars_in_combination = 0
 
-print("***MINIMAL PASS - PASSWORD GENERATOR TOOL***\n")
-use_express_mode = input("Two modes available for generating password - express and custom" \
-                         "\nEnter mode name OR" \
-                         "\nPress Enter to continue with express (default): ")
+if len(sys.argv) < 2:
+    password_size = 12
+    express_settings = True
+elif args.size:
+    password_size = args.size
+elif args.letters or args.numbers or args.specialchars:
+    if not args.letters:
+        args.letters = 0
+    if not args.numbers:
+        args.numbers = 0
+    if not args.specialchars:
+        args.specialchars = 0
+    password_size = sum([args.letters, args.numbers, args.specialchars])
+    user_combination = True
 
-if use_express_mode.lower() == "express" or len(use_express_mode) == 0:
-    letters_in_combination, numbers_in_combination, special_chars_in_combination = autogenerate_combination(password_size=12)
-    password_characters.extend(alphabets[0:letters_in_combination])
+if not express_settings:
+    validate_password_size(password_size)
+
+if user_combination:
+    letters_in_combination = args.letters
+    numbers_in_combination = args.numbers
+    special_chars_in_combination = args.specialchars
+else:
+    letters_in_combination, numbers_in_combination, special_chars_in_combination = autogenerate_combination(password_size)
+
+if express_settings:
+    password_characters.extend(alphabet[0:letters_in_combination])
     password_characters.extend(numbers[0:numbers_in_combination])
     password_characters.extend(special_chars[0:special_chars_in_combination])
-elif use_express_mode.lower() == "custom":
-    while True:
-        try:
-            password_size = int(input("Enter the size of password (min:8, max: 256): "))
-            if 8 <= password_size <= 256:
-                break
-            else:
-                print("The password size provided doesn't satisfy the requirements. Please try again")
-        except ValueError:
-            print("Invalid password size, please enter numeric value")
-
-    total_letters, total_numbers, total_special_chars = identify_password_combination(password_size)
-
-    if total_letters > 0:
-        password_characters.extend(generate_password(alphabets, total_letters))
-
-    if total_numbers > 0:
-        password_characters.extend(generate_password(numbers, total_numbers))
-
-    if total_special_chars > 0:
-        password_characters.extend(generate_password(special_chars, total_special_chars))
 else:
-    print("Invalid mode. Please try again")
+    if letters_in_combination > 0:
+        password_characters.extend(generate_password(alphabet, letters_in_combination))
+
+    if numbers_in_combination > 0:
+        password_characters.extend(generate_password(numbers, numbers_in_combination))
+
+    if special_chars_in_combination > 0:
+        password_characters.extend(generate_password(special_chars, special_chars_in_combination))
 
 random.shuffle(password_characters)
 password = "".join(password_characters)
